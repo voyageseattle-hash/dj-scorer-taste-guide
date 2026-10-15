@@ -4,8 +4,8 @@ import { once } from "node:events";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
 import { z } from "zod";
-import { createDemoApp } from "../server.mjs";
-import { activateConfiguredTransport } from "../server/configuredRuntime.mjs";
+import { createDemoApp } from "../server/demoApp.mjs";
+import { createConfiguredRuntime } from "../server/configuredRuntime.mjs";
 import { MUSIC_GENRES, TASTE_GOALS } from "../src/lib/tasteTypes.ts";
 import { REGION_NAMES } from "../src/lib/regions.ts";
 
@@ -67,9 +67,9 @@ async function main() {
   process.chdir(root);
   const { config } = await import("dotenv");
   config({ path: path.join(root, ".env"), quiet: true });
-  const release = await activateConfiguredTransport(root, process.env);
-  const agent = await createAgentServer({ env: process.env });
-  agent.server.server.onclose = async () => { await release(); process.exit(0); };
+  const runtime = await createConfiguredRuntime(root, process.env);
+  const agent = await createAgentServer({ env: process.env, state: runtime.state, ...(runtime.state ? { usageFilename: null } : {}) });
+  agent.server.server.onclose = async () => { await runtime.release(); process.exit(0); };
   await agent.server.connect(new StdioServerTransport());
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url))

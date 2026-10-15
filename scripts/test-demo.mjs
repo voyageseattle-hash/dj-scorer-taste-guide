@@ -5,8 +5,10 @@ import { fixtureTasteProvider } from "../server/tasteFixtures.ts";
 
 const env = {
   QLOO_API_KEY: "offline-fixture-only", QLOO_ENABLED: "true", QLOO_OPERATOR_APPROVED: "true",
-  QLOO_FREE_ACCESS_CONFIRMED: "true", QLOO_HOSTING_PERMITTED_CONFIRMED: "true",
-  QLOO_EVENT_QUOTA: "15", QLOO_EVENT_RATE_PER_MINUTE: "15", QLOO_ACCESS_EXPIRES_AT: "2099-01-01T00:00:00Z",
+  QLOO_EVENT_DEMO_OPERATOR_APPROVED: "true",
+  QLOO_FREE_ACCESS_CONFIRMED: "false", QLOO_HOSTING_PERMITTED_CONFIRMED: "false",
+  QLOO_EVENT_QUOTA: "200", QLOO_EVENT_RATE_PER_MINUTE: "15", QLOO_ACCESS_EXPIRES_AT: "2026-11-17T04:45:00Z",
+  QLOO_BUDGET_BACKEND: "postgres", QLOO_BUDGET_DATABASE_URL: "offline-database-fixture", QLOO_PRIOR_HTTP_ATTEMPTS: "5",
   APP_URL: "http://demo.invalid",
 };
 const server = createDemoApp({ env, provider: fixtureTasteProvider() }).listen(0, "127.0.0.1");
@@ -25,6 +27,11 @@ try {
   assert.equal((await fetch(base + "/api/unknown")).status, 404);
   assert.equal((await fetch(base + "/health")).status, 200);
   assert.equal((await fetch(base + "/about")).status, 200);
+  const readiness = await (await fetch(base + "/api/taste/status")).json();
+  assert.equal(readiness.state, "ready");
+  assert.equal(readiness.accessBasis, "operator_approved_event_demo");
+  assert.deepEqual(readiness.issuerConfirmations, { freeAccess: false, hostingPermission: false });
+  assert.match(readiness.message, /unconfirmed/);
   const request = await post("/api/taste/tags", { genre: "house" });
   assert.equal(request.status, 200);
   const session = request.headers.get("set-cookie");

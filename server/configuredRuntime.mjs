@@ -2,10 +2,11 @@ import { createHash } from "node:crypto";
 import { qlooReadiness } from "./qlooAccess.ts";
 import { activateLiveTransport } from "./liveRuntime.mjs";
 import { createPostgresBudget, createSharedQlooTransport } from "./postgresBudget.mjs";
+import { createPostgresTasteState } from "./tasteState.ts";
 
-export async function activateConfiguredTransport(root, env) {
-  if (env.QLOO_ENABLED !== "true" || env.QLOO_OPERATOR_APPROVED !== "true") return () => {};
-  if (env.QLOO_BUDGET_BACKEND !== "postgres") return activateLiveTransport(root, env);
+export async function createConfiguredRuntime(root, env) {
+  if (env.QLOO_ENABLED !== "true" || env.QLOO_OPERATOR_APPROVED !== "true") return { release: () => {} };
+  if (env.QLOO_BUDGET_BACKEND !== "postgres") return { release: activateLiveTransport(root, env) };
   if (qlooReadiness(env).state !== "ready" || !env.QLOO_BUDGET_DATABASE_URL || !/^\d+$/.test(env.QLOO_PRIOR_HTTP_ATTEMPTS || ""))
     throw new Error("Shared live budget configuration is incomplete.");
   const databaseUrl = new URL(env.QLOO_BUDGET_DATABASE_URL);
@@ -16,6 +17,7 @@ export async function activateConfiguredTransport(root, env) {
   const pool = new Pool({
     connectionString: databaseUrl.href, max: 2,
     connectionTimeoutMillis: 10000, idleTimeoutMillis: 10000,
+    query_timeout: 10000, statement_timeout: 10000,
     ssl: { rejectUnauthorized: true },
   });
   pool.on("error", () => {});
@@ -28,10 +30,16 @@ export async function activateConfiguredTransport(root, env) {
       expiresAt: env.QLOO_ACCESS_EXPIRES_AT,
       priorUsed: Number(env.QLOO_PRIOR_HTTP_ATTEMPTS),
     });
+    const state = await createPostgresTasteState(pool);
     globalThis.fetch = createSharedQlooTransport({ fetchImpl: nativeFetch, budget });
-    return async () => { globalThis.fetch = nativeFetch; await pool.end(); };
+    return { state, release: async () => { globalThis.fetch = nativeFetch; await pool.end(); } };
   } catch {
     await pool.end();
     throw new Error("The shared budget could not be initialized. Live access remains stopped.");
   }
+}
+
+// Compatibility entry point for callers that only need the guarded transport.
+export async function activateConfiguredTransport(root, env) {
+  return (await createConfiguredRuntime(root, env)).release;
 }

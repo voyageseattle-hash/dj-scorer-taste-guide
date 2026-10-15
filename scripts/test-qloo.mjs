@@ -161,6 +161,37 @@ console.log(
   "PASS Missing access, free-access confirmation, expiry, worst-case HTTP budget, and rate-window boundaries.",
 );
 
+const demoNow = Date.parse("2026-10-15T12:00:00Z");
+const operatorDemo = {
+  ...env, QLOO_OPERATOR_APPROVED: "true", QLOO_EVENT_DEMO_OPERATOR_APPROVED: "true",
+  QLOO_FREE_ACCESS_CONFIRMED: "false", QLOO_HOSTING_PERMITTED_CONFIRMED: "false",
+  QLOO_EVENT_QUOTA: "200", QLOO_EVENT_RATE_PER_MINUTE: "15",
+  QLOO_ACCESS_EXPIRES_AT: "2026-11-17T04:45:00Z", QLOO_PRIOR_HTTP_ATTEMPTS: "5",
+  QLOO_BUDGET_BACKEND: "postgres", QLOO_BUDGET_DATABASE_URL: "offline-database-fixture",
+};
+const operatorStatus = qlooReadiness(operatorDemo, demoNow);
+assert.equal(operatorStatus.state, "ready");
+assert.equal(operatorStatus.accessBasis, "operator_approved_event_demo");
+assert.deepEqual(operatorStatus.issuerConfirmations, { freeAccess: false, hostingPermission: false });
+assert.equal(operatorStatus.limitsSource, "operator_configuration");
+assert.match(operatorStatus.message, /unconfirmed/);
+assert.equal(operatorDemo.QLOO_FREE_ACCESS_CONFIRMED, "false");
+assert.equal(operatorDemo.QLOO_HOSTING_PERMITTED_CONFIRMED, "false");
+for (const [name, value] of [
+  ["QLOO_EVENT_DEMO_OPERATOR_APPROVED", "false"], ["QLOO_OPERATOR_APPROVED", "false"],
+  ["QLOO_ENABLED", "false"], ["QLOO_API_KEY", ""],
+  ["QLOO_BUDGET_BACKEND", "file"], ["QLOO_BUDGET_DATABASE_URL", ""],
+  ["QLOO_EVENT_QUOTA", "201"], ["QLOO_EVENT_RATE_PER_MINUTE", "16"],
+  ["QLOO_PRIOR_HTTP_ATTEMPTS", "4"], ["QLOO_PRIOR_HTTP_ATTEMPTS", ""],
+  ["QLOO_ACCESS_EXPIRES_AT", "2026-11-17T04:45:01Z"],
+  ["QLOO_ACCESS_EXPIRES_AT", "2026-10-14T00:00:00Z"],
+]) assert.equal(qlooReadiness({ ...operatorDemo, [name]: value }, demoNow).state, "disconnected", name);
+assert.equal(qlooReadiness(env, demoNow).accessBasis, "issuer_confirmations");
+const boundedDemo = new QlooCallBudget(operatorDemo, undefined, () => demoNow);
+boundedDemo.reserve(15);
+assert.throws(() => boundedDemo.reserve(1), (error) => error.code === "QLOO_RATE_LIMIT");
+console.log("PASS Explicit operator event approval with issuer facts still false/unconfirmed; Postgres, prior five, total 200, minute 15, expiry and disabled/key gates remain enforced. Zero live requests.");
+
 const rejectedProvider = new HarnessTasteProvider(
   env,
   new QlooCallBudget(env),

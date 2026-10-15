@@ -6,3 +6,4 @@ data/
 artifacts/
 *.log
 .DS_Store
+.netlify/

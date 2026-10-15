@@ -1,15 +1,15 @@
 # Submission checklist and draft
 
-The proposed public repository is `voyageseattle-hash/dj-scorer-taste-guide`. The candidate is prepared for review, not published or submitted.
+The sanitized MIT source is published at [voyageseattle-hash/dj-scorer-taste-guide](https://github.com/voyageseattle-hash/dj-scorer-taste-guide). The operator-approval and Netlify updates are prepared for review and have not been published. No final entry has been submitted by this source preparation.
 
 ## Remaining work
 
-- Review the exact `release-manifest.json`, MIT grant, provenance, and dependency notices; publish only this standalone copy with fresh Git history.
-- Verify existing GitHub create/push access and free hosting account access. Obtain a secure handoff if new persistent authorization is necessary.
+- Review the operator-approval diff and exact `release-manifest.json` before updating the public source.
+- Verify actual Netlify usage and the database satisfy the owner's no-card/no-spend constraint. Render requested a card and is blocked. The Netlify Function adaptation is prepared for independent review; it is not deployed.
 - Publish a functioning public Node demo on an approved free host. Offline preview alone must not be described as live Qloo functionality.
-- Approve a public live request budget and durable quota storage or approved gateway. The earlier five-request test allowance is exhausted. Enter any host secret manually through the host's protected settings after approval.
-- Confirm the event key's access period through judging and the applicable quota/rate/hosting terms. Preserve clear provider failures and source labels.
-- Test the actual public URL, responsive UI, anonymous choice ownership, and security boundaries. Any further real Qloo request needs new authorization.
+- Configure the approved event path with durable Postgres storage: at most 200 total actual attempts including the five already used, at most 15 per minute, and an expiry no later than 2026-11-17T04:45:00Z. Enter host secrets manually through protected server settings.
+- Keep issuer free-access and hosting flags false while unconfirmed. The explicit owner-approved event path permits bounded operation without claiming those facts; an organizer reply is not a prerequisite. Preserve clear provider failures and source labels.
+- Test the actual public URL, responsive UI, anonymous choice ownership, and security boundaries within the approved allowance. Preparing this source update makes no further Qloo requests.
 - Complete Devpost registration, final text, public repository/license link, public demo URL, and testing instructions. Review the actual final entry before submission.
 
 The official rules set the submission deadline at October 30, 2026, 11:45 p.m. Eastern and judging through November 16. They require a working Qloo-integrated application, public source with an open-source license, a functional demo link, and an explanation of the new work in an existing project. The overview specifically requires an externally published usable demo and says a video is optional. [Rules](https://qloo.devpost.com/rules), [overview](https://qloo.devpost.com/).

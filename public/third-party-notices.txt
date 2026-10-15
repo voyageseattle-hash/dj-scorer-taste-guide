@@ -2,7 +2,7 @@
 
 Project-authored code is MIT licensed. Dependencies retain their own licenses; the project license does not relicense Qloo services or provider data.
 
-Direct runtime dependencies: @qloo/qloo-harness 0.1.26 (MIT), @earendil-works/pi-coding-agent 1.2.0 (MIT), @modelcontextprotocol/sdk 1.32.1 (MIT), Zod 4.6.7 (MIT), Express 4.22.1 (MIT), dotenv 17.4.2 (BSD-2-Clause), React and React DOM 19.2.5 (MIT), lucide-react 0.546.0 (ISC with Feather MIT portions), and tsx 4.23.15 (MIT). Development tools retain their published licenses. The lockfile records the installed dependency graph.
+Direct runtime dependencies: @qloo/qloo-harness 0.1.26 (MIT), @earendil-works/pi-coding-agent 1.2.0 (MIT), @modelcontextprotocol/sdk 1.32.1 (MIT), Zod 4.6.7 (MIT), Express 4.22.1 (MIT), dotenv 17.4.2 (BSD-2-Clause), React and React DOM 19.2.5 (MIT), lucide-react 0.546.0 (ISC with Feather MIT portions), tsx 4.23.15 (MIT), pg 8.23.1 (MIT), and serverless-http 4.0.0 (MIT). Development tools retain their published licenses. The lockfile records the installed dependency graph.
 
 The Qloo package's bundled notice names an earlier Pi release; this project explicitly overrides Pi to 1.2.0. No vendor runtime source or provider data has been copied into project source. npm distributes dependencies with their published notices. Frontend license texts are retained below and copied into public/third-party-notices.txt for the built demo.
 
@@ -456,3 +456,42 @@ SOFTWARE.
    END OF TERMS AND CONDITIONS
 
 This is an offline test engine, not a hosted service or deployed runtime dependency. Its packaged PostgreSQL components retain their own permissive notices. No engine binary is included in project source.
+
+
+## serverless-http 4.0.0
+
+Supplied LICENSE.txt, retained verbatim:
+
+The MIT License (MIT)
+
+Copyright (c) 2016 Doug Moscrop
+
+The following license applies to all parts of this software except as
+documented below:
+
+====
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+====
+
+All files located in the node_modules and external directories are
+externally maintained libraries used by this software which have their
+own licenses; we recommend you read them, as their terms may differ from
+the terms above.

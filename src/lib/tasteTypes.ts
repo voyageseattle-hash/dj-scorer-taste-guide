@@ -101,6 +101,9 @@ export const genreLabel = (id: MusicGenre) =>
 export interface TasteStatus {
   state: "ready" | "disconnected";
   credentialConfigured: boolean;
+  accessBasis: "operator_approved_event_demo" | "issuer_confirmations" | "unconfirmed";
+  issuerConfirmations: { freeAccess: boolean; hostingPermission: boolean };
+  limitsSource: "operator_configuration";
   missing: string[];
   message: string;
   offlineExampleAvailable: boolean;

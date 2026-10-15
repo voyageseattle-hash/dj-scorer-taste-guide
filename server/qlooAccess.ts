@@ -17,24 +17,53 @@ export function qlooReadiness(
   now = Date.now(),
 ): TasteStatus {
   const missing: string[] = [];
+  const issuerConfirmations = {
+    freeAccess: env.QLOO_FREE_ACCESS_CONFIRMED === "true",
+    hostingPermission: env.QLOO_HOSTING_PERMITTED_CONFIRMED === "true",
+  };
+  const operatorDemo = env.QLOO_EVENT_DEMO_OPERATOR_APPROVED === "true";
+  const unconfirmed = [
+    ...(!issuerConfirmations.freeAccess ? ["free access"] : []),
+    ...(!issuerConfirmations.hostingPermission ? ["hosting permission"] : []),
+    "provider limits",
+  ];
   if (!env.QLOO_API_KEY?.trim()) missing.push("QLOO_API_KEY");
   if (env.QLOO_ENABLED !== "true") missing.push("QLOO_ENABLED");
-  if (env.QLOO_FREE_ACCESS_CONFIRMED !== "true")
+  if (!operatorDemo && !issuerConfirmations.freeAccess)
     missing.push("QLOO_FREE_ACCESS_CONFIRMED");
-  if (env.QLOO_HOSTING_PERMITTED_CONFIRMED !== "true")
+  if (!operatorDemo && !issuerConfirmations.hostingPermission)
     missing.push("QLOO_HOSTING_PERMITTED_CONFIRMED");
   for (const name of ["QLOO_EVENT_QUOTA", "QLOO_EVENT_RATE_PER_MINUTE"])
     if (!/^[1-9]\d*$/.test(env[name] || "")) missing.push(name);
   const expiry = Date.parse(env.QLOO_ACCESS_EXPIRES_AT || "");
   if (!Number.isFinite(expiry) || expiry <= now)
     missing.push("QLOO_ACCESS_EXPIRES_AT");
+  if (operatorDemo) {
+    // Separate the owner's bounded approval from unverified issuer facts.
+    // This event-specific path cannot enlarge the approved safety envelope.
+    if (env.QLOO_OPERATOR_APPROVED !== "true") missing.push("QLOO_OPERATOR_APPROVED");
+    if (env.QLOO_BUDGET_BACKEND !== "postgres") missing.push("QLOO_BUDGET_BACKEND");
+    if (!env.QLOO_BUDGET_DATABASE_URL?.trim()) missing.push("QLOO_BUDGET_DATABASE_URL");
+    if (Number(env.QLOO_EVENT_QUOTA) > 200) missing.push("QLOO_EVENT_QUOTA");
+    if (Number(env.QLOO_EVENT_RATE_PER_MINUTE) > 15) missing.push("QLOO_EVENT_RATE_PER_MINUTE");
+    if (expiry > Date.parse("2026-11-17T04:45:00Z")) missing.push("QLOO_ACCESS_EXPIRES_AT");
+    const prior = Number(env.QLOO_PRIOR_HTTP_ATTEMPTS);
+    if (!/^\d+$/.test(env.QLOO_PRIOR_HTTP_ATTEMPTS || "") || !Number.isSafeInteger(prior) || prior < 5 || prior > 1e9)
+      missing.push("QLOO_PRIOR_HTTP_ATTEMPTS");
+  }
   return {
     state: missing.length ? "disconnected" : "ready",
     credentialConfigured: Boolean(env.QLOO_API_KEY?.trim()),
-    missing,
+    missing: [...new Set(missing)],
+    accessBasis: operatorDemo ? "operator_approved_event_demo" :
+      issuerConfirmations.freeAccess && issuerConfirmations.hostingPermission ? "issuer_confirmations" : "unconfirmed",
+    issuerConfirmations,
+    limitsSource: "operator_configuration",
     message: missing.length
       ? "Live taste search is not configured. The offline example is available."
-      : "Qloo access is configured. Live requests are enabled.",
+      : operatorDemo
+        ? `Operator-approved bounded event demo. Still unconfirmed with the issuer: ${unconfirmed.join(", ")}.`
+        : "Qloo access is configured. Live requests are enabled.",
     offlineExampleAvailable: true,
   };
 }

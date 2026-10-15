@@ -1,7 +1,6 @@
 import type { Express, Request, Response } from "express";
 import fs from "node:fs";
 import path from "node:path";
-import { randomUUID } from "node:crypto";
 import { verifyRequest, type Identity } from "./auth";
 import { qlooReadiness, QlooCallBudget, TasteServiceError } from "./qlooAccess";
 import {
@@ -22,12 +21,15 @@ import {
   type TasteGoal,
 } from "../src/lib/tasteTypes";
 import { REGION_NAMES, localDateKey } from "../src/lib/regions";
+import { createMemoryTasteState, type TasteState } from "./tasteState";
 
 export interface TasteRouteOptions {
   env?: NodeJS.ProcessEnv;
   provider?: TasteProvider;
   authenticate?: (req: Request, res: Response) => Promise<Identity | null>;
   listings?: () => ListingInput[];
+  state?: TasteState;
+  usageFilename?: string | null;
 }
 const validDate = (value: unknown) =>
   typeof value === "string" &&
@@ -73,10 +75,7 @@ export function registerTasteRoutes(
   const authenticate =
     options.authenticate ||
     ((req, res) => verifyRequest(req, res));
-  const choices = new Map<
-    string,
-    { uid: string; tag: CulturalTag; expires: number }
-  >();
+  const state = options.state || createMemoryTasteState();
   let liveProvider = options.provider;
   const getProvider = () => {
     if (qlooReadiness(env).state !== "ready")
@@ -89,7 +88,7 @@ export function registerTasteRoutes(
         env,
         new QlooCallBudget(
           env,
-          path.join(process.cwd(), "data", "qloo-usage.json"),
+          options.usageFilename === null ? undefined : options.usageFilename || path.join(process.cwd(), "data", "qloo-usage.json"),
         ),
       );
     return liveProvider;
@@ -123,9 +122,9 @@ export function registerTasteRoutes(
   };
   app.get("/api/taste/status", (req, res) => res.json(qlooReadiness(env)));
   app.post("/api/taste/tags", async (req, res) => {
-    const identity = await authenticate(req, res);
-    if (!identity) return;
     try {
+      const identity = await authenticate(req, res);
+      if (!identity) return;
       allowedBody(req.body, ["genre"]);
       const genre = MUSIC_GENRES.find((item) => item.id === req.body.genre)
         ?.id as MusicGenre | undefined;
@@ -135,45 +134,21 @@ export function registerTasteRoutes(
           "Choose one of the music genres in the guide.",
           400,
         );
-      const now = Date.now();
-      for (const [token, value] of choices)
-        if (value.expires <= now) choices.delete(token);
-      if (choices.size > 5000)
-        throw new TasteServiceError(
-          "TASTE_BUSY",
-          "The taste guide is busy. Try again shortly.",
-          429,
-        );
       const tags = await getProvider().findTags(genre);
-      const result = tags.map((tag) => {
-        const token = randomUUID();
-        choices.set(token, {
-          uid: identity.uid,
-          tag,
-          expires: now + 20 * 60000,
-        });
-        return { token, label: tag.name, genre: tag.genre };
-      });
+      const result = await state.issueChoices(identity.uid, tags);
       res.json({ source: "qloo", choices: result });
     } catch (error) {
       respondError(res, error);
     }
   });
   app.post("/api/taste/plan", async (req, res) => {
-    const identity = await authenticate(req, res);
-    if (!identity) return;
     try {
+      const identity = await authenticate(req, res);
+      if (!identity) return;
       allowedBody(req.body, ["choiceToken", "goal", "region", "today"]);
       const settings = planSettings(req.body);
-      const choice =
-        typeof req.body.choiceToken === "string"
-          ? choices.get(req.body.choiceToken)
-          : undefined;
-      if (
-        !choice ||
-        choice.uid !== identity.uid ||
-        choice.expires <= Date.now()
-      )
+      const choice = await state.choice(identity.uid, req.body.choiceToken);
+      if (!choice)
         throw new TasteServiceError(
           "TASTE_CHOICE",
           "Search again and confirm the music tag you want to use.",
@@ -181,7 +156,7 @@ export function registerTasteRoutes(
         );
       const plan = await createTastePlan(
         getProvider(),
-        choice.tag,
+        choice,
         settings.goal,
         settings.region,
         settings.today,

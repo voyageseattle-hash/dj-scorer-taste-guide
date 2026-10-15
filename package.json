@@ -13,7 +13,7 @@
     "start": "node --import tsx scripts/start.mjs",
     "build": "vite build",
     "lint": "tsc --noEmit",
-    "test": "node --import tsx scripts/test-qloo.mjs && node --import tsx scripts/test-qloo-validation.mjs && node --import tsx scripts/test-live-runtime.mjs && node --import tsx scripts/test-postgres-budget.mjs && node --import tsx scripts/test-demo.mjs && node --import tsx scripts/test-mcp.mjs",
+    "test": "node --import tsx scripts/test-qloo.mjs && node --import tsx scripts/test-qloo-validation.mjs && node --import tsx scripts/test-live-runtime.mjs && node --import tsx scripts/test-postgres-budget.mjs && node --import tsx scripts/test-demo.mjs && node --import tsx scripts/test-mcp.mjs && node --import tsx scripts/test-netlify.mjs",
     "mcp": "node --import tsx scripts/mcp-server.mjs",
     "audit:source": "node scripts/audit-source.mjs"
   },
@@ -27,6 +27,7 @@
     "pg": "8.23.1",
     "react": "19.2.5",
     "react-dom": "19.2.5",
+    "serverless-http": "4.0.0",
     "tsx": "4.23.15",
     "zod": "4.6.7"
   },
