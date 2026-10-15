@@ -21,7 +21,7 @@ const fixture = fixtureTasteProvider();
 const provider = { ...fixture, recommend: async (tag) => { recommendations++; return fixture.recommend(tag); } };
 let initializations = 0;
 const initialize = async () => { initializations++; return { state: await createPostgresTasteState(database), release: async () => {} }; };
-const makeHandler = (overrides = {}) => createNetlifyHandler({ env, initialize, provider, deploymentContext: "production", ...overrides });
+const makeHandler = (overrides = {}) => createNetlifyHandler({ env, initialize, provider, deploymentContext: "production", reportStartup: () => {}, ...overrides });
 function call(handler, path, body, cookie, extraHeaders = {}) {
   return handler({ path, httpMethod: body === undefined ? "GET" : "POST", headers: {
     "content-type": "application/json", ...(cookie ? { cookie } : {}), ...extraHeaders,
