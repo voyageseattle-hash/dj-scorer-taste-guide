@@ -1,0 +1,63 @@
+import assert from "node:assert/strict";
+import { PGlite } from "@electric-sql/pglite";
+import { createPostgresBudget, createSharedQlooTransport } from "../server/postgresBudget.mjs";
+const database = new PGlite();
+const config = { cap: 5, rate: 30, expiresAt: "2099-01-01T00:00:00Z", priorUsed: 0 };
+const firstHash = "a".repeat(64);
+const endpoint = "https://hackathon.api.qloo.com/v2/tags";
+try {
+  const first = await createPostgresBudget(database, firstHash, config);
+  const second = await createPostgresBudget(database, firstHash, config);
+  let calls = 0;
+  const native = async (_input, init) => { assert.equal(init.redirect, "error"); calls++; return Response.json({}); };
+  const firstFetch = createSharedQlooTransport({ fetchImpl: native, budget: first });
+  const secondFetch = createSharedQlooTransport({ fetchImpl: native, budget: second });
+  const results = await Promise.allSettled(Array.from({ length: 10 }, (_, index) => (index % 2 ? firstFetch : secondFetch)(endpoint)));
+  assert.equal(results.filter((entry) => entry.status === "fulfilled").length, 5);
+  assert.equal(calls, 5, "Two independent transports share one atomic five-attempt cap");
+  let row = (await database.query("SELECT * FROM qloo_http_budget WHERE key_hash = $1", [firstHash])).rows[0];
+  assert.equal(row.used, 5);
+  await createPostgresBudget(database, firstHash, { ...config, cap: 100, rate: 30, priorUsed: 0, expiresAt: "2100-01-01T00:00:00Z" });
+  row = (await database.query("SELECT * FROM qloo_http_budget WHERE key_hash = $1", [firstHash])).rows[0];
+  assert.equal(row.attempt_cap, 5, "Restart cannot raise a cap");
+  assert.equal(row.used, 5, "Restart cannot reset usage");
+
+  const prior = await createPostgresBudget(database, "b".repeat(64), { ...config, priorUsed: 5 });
+  await assert.rejects(() => prior.reserve(), (error) => error.code === "QLOO_QUOTA");
+  const limited = await createPostgresBudget(database, "c".repeat(64), { ...config, rate: 2 });
+  let rateCalls = 0;
+  const limitedFetch = createSharedQlooTransport({ fetchImpl: async () => { rateCalls++; return Response.json({}); }, budget: limited });
+  assert.equal((await limitedFetch(endpoint)).status, 200);
+  assert.equal((await limitedFetch(endpoint)).status, 200);
+  const denied = await limitedFetch(endpoint);
+  assert.equal(denied.status, 429);
+  assert.equal((await denied.json()).code, "QLOO_RATE_LIMIT");
+  assert.equal(rateCalls, 2, "Temporary denial sends no provider request");
+  assert.equal((await database.query("SELECT stopped_code FROM qloo_http_budget WHERE key_hash = $1", ["c".repeat(64)])).rows[0].stopped_code, null);
+  await database.query("UPDATE qloo_http_budget SET window_started_at = CURRENT_TIMESTAMP - INTERVAL '61 seconds' WHERE key_hash = $1", ["c".repeat(64)]);
+  assert.equal((await limitedFetch(endpoint)).status, 200, "The SAME transport recovers after the authoritative minute window resets");
+  assert.equal(rateCalls, 3);
+
+  const stopped = await createPostgresBudget(database, "d".repeat(64), config);
+  let authCalls = 0;
+  const authFailure = createSharedQlooTransport({ fetchImpl: async () => { authCalls++; return new Response("{}", { status: 401 }); }, budget: stopped });
+  assert.equal((await authFailure(endpoint)).status, 401);
+  await assert.rejects(() => authFailure(endpoint), /SHARED_QLOO_STOPPED/);
+  assert.equal(authCalls, 1, "Provider errors still latch the transport and persist the shared stop");
+  const resumed = await createPostgresBudget(database, "d".repeat(64), config);
+  await assert.rejects(() => resumed.reserve(), "Provider stop survives a fresh transport/instance");
+  const expired = await createPostgresBudget(database, "e".repeat(64), { ...config, expiresAt: "2000-01-01T00:00:00Z" });
+  await assert.rejects(() => expired.reserve());
+  const explicitlyStopped = await createPostgresBudget(database, "f".repeat(64), config);
+  let explicitCalls = 0;
+  const explicitFetch = createSharedQlooTransport({ fetchImpl: async () => { explicitCalls++; return Response.json({}); }, budget: explicitlyStopped });
+  await explicitlyStopped.stop("BUDGET_STOP");
+  await assert.rejects(() => explicitFetch(endpoint), (error) => error.code === "QLOO_STOPPED");
+  await assert.rejects(() => explicitFetch(endpoint), (error) => error.code === "QLOO_STOPPED");
+  assert.equal(explicitCalls, 0, "An explicit shared stop remains fail-closed on later invocations");
+  const broken = createSharedQlooTransport({ fetchImpl: async () => assert.fail("No dispatch without DB reservation"), budget: { reserve: async () => { throw new Error("offline database fixture"); }, stop: async () => {} } });
+  await assert.rejects(() => broken(endpoint));
+  console.log("PASS Real Postgres SQL: concurrent shared cap, prior usage, immutable limits, same-process minute-window recovery with 429/no dispatch, expiry, persistent provider/explicit stops and database-failure closure. Zero Qloo requests.");
+} finally {
+  await database.close();
+}

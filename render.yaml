@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: dj-scorer-taste-guide
+    runtime: node
+    plan: free
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: HOST
+        value: 0.0.0.0
+      - key: QLOO_ENABLED
+        value: "false"
+      - key: QLOO_OPERATOR_APPROVED
+        value: "false"
+      - key: QLOO_FREE_ACCESS_CONFIRMED
+        value: "false"
+      - key: QLOO_HOSTING_PERMITTED_CONFIRMED
+        value: "false"
+      - key: QLOO_PERSISTENT_STORAGE_CONFIRMED
+        value: "false"

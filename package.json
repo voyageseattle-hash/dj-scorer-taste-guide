@@ -1,0 +1,48 @@
+{
+  "name": "dj-scorer-taste-guide",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "A focused DJ practice workflow grounded in Qloo cultural relationships.",
+  "license": "MIT",
+  "engines": {
+    "node": ">=24 <25"
+  },
+  "scripts": {
+    "dev": "node --import tsx server.mjs",
+    "start": "node --import tsx scripts/start.mjs",
+    "build": "vite build",
+    "lint": "tsc --noEmit",
+    "test": "node --import tsx scripts/test-qloo.mjs && node --import tsx scripts/test-qloo-validation.mjs && node --import tsx scripts/test-live-runtime.mjs && node --import tsx scripts/test-postgres-budget.mjs && node --import tsx scripts/test-demo.mjs && node --import tsx scripts/test-mcp.mjs",
+    "mcp": "node --import tsx scripts/mcp-server.mjs",
+    "audit:source": "node scripts/audit-source.mjs"
+  },
+  "dependencies": {
+    "@earendil-works/pi-coding-agent": "1.2.0",
+    "@modelcontextprotocol/sdk": "1.32.1",
+    "@qloo/qloo-harness": "0.1.26",
+    "dotenv": "17.4.2",
+    "express": "4.22.1",
+    "lucide-react": "0.546.0",
+    "pg": "8.23.1",
+    "react": "19.2.5",
+    "react-dom": "19.2.5",
+    "tsx": "4.23.15",
+    "zod": "4.6.7"
+  },
+  "overrides": {
+    "qs": "6.16.0",
+    "@qloo/qloo-harness": {
+      "@earendil-works/pi-coding-agent": "1.2.0"
+    }
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.10",
+    "@types/express": "4.17.25",
+    "@types/node": "22.19.17",
+    "@types/react": "19.2.14",
+    "@vitejs/plugin-react": "5.2.0",
+    "typescript": "5.8.3",
+    "vite": "6.4.4"
+  }
+}
